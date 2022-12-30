@@ -1,3 +1,6 @@
-require 'board.rb'
-require 'game.rb'
+require_relative 'board.rb'
+require_relative 'game.rb'
 
+new_game = Game.new
+
+new_game.print_board
