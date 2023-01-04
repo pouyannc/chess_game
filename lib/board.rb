@@ -68,10 +68,10 @@ module Pieces
 
     B_MOVES.each_with_index do |m, i|
       until out_of_bounds(move_arr.last)
-        move_arr += sum_arrays(move_arr.last, m)
+        move_arr.push(sum_arrays(move_arr.last, m))
         return move_arr if move_arr.last == finish
       end
-
+      move_arr = [start]
     end
 
     return nil

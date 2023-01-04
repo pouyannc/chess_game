@@ -50,7 +50,7 @@ class Game
   end
 
   def occupied_by_any?(coord_arr)
-    !Board.board_spaces[to_board_coord(coord_arr)[0]][coord_arr[1] - 1] == ' '
+    !(Board.board_spaces[to_board_coord(coord_arr)[0]][coord_arr[1] - 1] == ' ')
   end
 
   def occupied_by_opp?(coord_arr)
@@ -105,26 +105,25 @@ class Game
   end
 
   def blocked?(piece, moves_arr)
-    blocked = false
     moves_arr.each_with_index do |s, i|
       if i == 0
         next
       elsif i == moves_arr.length - 1
         if (piece == '♙' || piece == '♟')
           if moves_arr.last[0] != moves_arr.first[0]
-            blocked = !occupied_by_opp?(s)
+            return true if !occupied_by_opp?(s)
           else
-            blocked = occupied_by_any?(s)
+            return true if occupied_by_any?(s)
           end
         else
-          blocked = occupied_by_own?(s)
+          return true if occupied_by_own?(s)
         end
       else
-        blocked = occupied_by_any?(s)
+        return true if occupied_by_any?(s)
       end
     end
 
-    blocked
+    false
   end
 
   def valid_move?(piece, s, e) # return true or false if move is valid
