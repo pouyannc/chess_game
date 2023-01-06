@@ -82,28 +82,6 @@ class Game
     true
   end
 
-  def piece_move(piece, s, e)
-    #return array of moves to get from s to e.
-    case piece
-    when '♙'
-      return black_pawn_move(s, e)
-    when '♟'
-      return white_pawn_move(s, e)
-    when '♝' || '♗'
-      return bishop_move(s, e)
-    when '♞' || '♘'
-
-    when '♜' || '♖'
-
-    when '♛' || '♕'
-
-    when '♚' || '♔'
-
-    end
-
-
-  end
-
   def blocked?(piece, moves_arr)
     moves_arr.each_with_index do |s, i|
       if i == 0
@@ -130,7 +108,7 @@ class Game
     s_coord = to_coordinate_array(s)
     e_coord = to_coordinate_array(e)
 
-    moves = piece_move(piece, s_coord, e_coord)
+    moves = piece_move(s_coord, e_coord, piece)
 
     return false if moves.nil? || blocked?(piece, moves)
 

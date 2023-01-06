@@ -3,9 +3,9 @@ module Pieces
   W_P_MOVES = [[0, 1], [-1, 1], [1, 1]]
   B_MOVES = [[-1, 1], [1, 1], [-1, -1], [1, -1]]
   N_MOVES = [[-1,-2], [-2,-1], [-2,1], [-1,2], [1,2], [2,1], [2,-1], [1,-2]]
-  R_MOVES = []
-  Q_MOVES = []
-  K_MOVES = []
+  R_MOVES = [[1, 0], [0, 1], [-1, 0], [0, -1]]
+  Q_MOVES = [[1, 0], [0, 1], [-1, 0], [0, -1], [-1, 1], [1, 1], [-1, -1], [1, -1]]
+  K_MOVES = [[1, 0], [0, 1], [-1, 0], [0, -1], [-1, 1], [1, 1], [-1, -1], [1, -1]]
 
   def sum_arrays(arr1, arr2)
     [arr1, arr2].transpose.map { |x| x.sum }
@@ -25,51 +25,23 @@ module Pieces
     immediate_moves
   end
 
-  def black_pawn_move(start, finish)
+  def piece_move(start, finish, piece)
     move_arr = [start]
-    
-    B_P_MOVES.each_with_index do |m, i|
-      if i == 0 && start[1] == 7
-        2.times do
-          move_arr += sum_arrays(move_arr.last, m)
-          return move_arr if move_arr.last == finish
-        end
-      else
-        move_arr += sum_arrays(move_arr.last, m)
-      end
-      return move_arr if move_arr.last == finish
-      move_arr = [start]
-    end
-  
-    return nil
-  end
 
-  def white_pawn_move(start, finish)
-    move_arr = [start]
-    
-    W_P_MOVES.each_with_index do |m, i|
-      if i == 0 && start[1] == 2
+    Board.piece_movesets[piece].each_with_index do |m, i|
+      if i == 0 && ((piece == '♟' && start[1] == 2) || (piece == '♙' && start[1] == 7))
         2.times do
           move_arr.push(sum_arrays(move_arr.last, m))
           return move_arr if move_arr.last == finish
         end
+      elsif ['♙', '♟', '♘', '♞', '♔', '♚'].any?(piece)
+        move_arr.push(sum_arrays(move_arr.last, m))
+        return move_arr if move_arr.last == finish
       else
-        move_arr.push(sum_arrays(move_arr.last, m))
-      end
-      return move_arr if move_arr.last == finish
-      move_arr = [start]
-    end
-  
-    return nil
-  end
-
-  def bishop_move(start, finish)
-    move_arr = [start]
-
-    B_MOVES.each_with_index do |m, i|
-      until out_of_bounds(move_arr.last)
-        move_arr.push(sum_arrays(move_arr.last, m))
-        return move_arr if move_arr.last == finish
+        until out_of_bounds(move_arr.last)
+          move_arr.push(sum_arrays(move_arr.last, m))
+          return move_arr if move_arr.last == finish
+        end
       end
       move_arr = [start]
     end
@@ -77,19 +49,6 @@ module Pieces
     return nil
   end
 
-  def knight_move(start, finish)
-    move_arr = [start]
-
-    N_MOVES.each_with_index do |m, i|
-      until out_of_bounds(move_arr.last)
-        move_arr += sum_arrays(move_arr.last, m)
-        return move_arr if move_arr.last == finish
-      end
-
-    end
-
-    return nil
-  end
 end
 
 class Board
