@@ -22,7 +22,14 @@ class Game
   end
 
   def get_own_piece(position)
+    # Returns piece at give position, else return nil
     Board.player_boards[@turn].each_pair { |piece, arr| return piece if arr.any?(position) }
+    nil
+  end
+
+  def get_opp_piece(position)
+    # Returns piece at give position, else return nil
+    Board.player_boards[@opp].each_pair { |piece, arr| return piece if arr.any?(position) }
     nil
   end
 
@@ -178,8 +185,9 @@ class Game
   end
 
   def move_piece(start_position, end_position, piece)
-    #update castle states if king or rooks are moved
-    #update player_boards pieces that have been captured
+    # Update player_boards pieces that have been captured
+    captured_piece = get_opp_piece(end_position)
+    Board.player_boards[@opp][captured_piece] = [] unless capture_piece.nil?
 
     update_space(start_position, ' ')
     update_space(end_position, piece)
@@ -187,7 +195,16 @@ class Game
     player_boards_del(piece, start_position)
     player_boards_push(piece, end_position)
 
-    
+    # Update castle states if king or rooks are moved
+    if piece == '♜' || piece == '♖'
+      if start_position[0] == 'a' && castle_states[@turn]['ooo']
+        castle_states[@turn].delete('ooo')
+      elsif start_position[0] == 'h' && castle_states[@turn]['oo']
+        castle_states[@turn].delete('oo')
+      end
+    elsif piece == '♚' || piece == '♔' && castle_states[@turn] != {}
+      castle_states[@turn] = {}
+    end
   end
 
   def turn_script
