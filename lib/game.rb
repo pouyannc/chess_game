@@ -3,7 +3,7 @@ require_relative 'board.rb'
 class Game
   include Pieces
 
-  attr_accessor :turn, :win, :board
+  attr_accessor :turn, :opp, :win, :board
 
   def initialize
     @turn = 'White'
@@ -26,17 +26,68 @@ class Game
     nil
   end
 
+  def valid_castle?(type)
+    Board.castle_states[@turn][type] && !occupied_by_any?(Board.castle_states[@turn][type][2]) && !occupied_by_any?(Board.castle_states[@turn][type][3])
+  end
+
+  def valid_piece?(user_input)
+    if user_input == 'ooo' || user_input == 'oo'
+      return valid_castle?(user_input)
+    elsif check_within_bounds(user_input) && Board.player_boards[@turn].flatten.flatten.any?(user_input)
+      return !fully_blocked?(get_own_piece(user_input), user_input)
+    else
+      return false
+    end
+  end
+
   def get_move_piece
     puts "Enter the coordinate of a piece to move:\n"
     piece_space = gets.chomp.downcase
-
-    until check_within_bounds(piece_space) && Board.player_boards[@turn].flatten.flatten.any?(piece_space)
+    until valid_piece?(piece_space)
       puts "You must enter a valid coordinate (letter + number):\n"
       piece_space = gets.chomp.downcase
     end
-    piece = get_own_piece(piece_space)
 
+    return ['castle', piece_space] if piece_space == 'ooo' || piece_space == 'oo'
+
+    piece = get_own_piece(piece_space)
     [piece, piece_space]
+  end
+
+  def update_space(space, piece)
+    Board.board_spaces[space[0]][space[1].to_i - 1] = piece
+  end
+
+  def player_boards_push(piece, position)
+    Board.player_boards[@turn][piece].push(position)
+  end
+
+  def player_boards_del(piece, position)
+    Board.player_boards[@turn][piece] -= [position]
+  end
+
+  def castle(type)
+    king_piece, rook_piece = Board.player_boards[@turn].keys[0], Board.player_boards[@turn].keys[2]
+    
+    king_start = to_board_coord(Board.castle_states[@turn][type][0])
+    rook_start = to_board_coord(Board.castle_states[@turn][type][1])
+
+    king_end = to_board_coord(Board.castle_states[@turn][type][2])
+    rook_end = to_board_coord(Board.castle_states[@turn][type][3])
+
+    update_space(king_start, ' ')
+    update_space(rook_start, ' ')
+
+    update_space(king_end, king_piece)
+    update_space(rook_end, rook_piece)
+
+    player_boards_del(king_piece, king_start)
+    player_boards_del(rook_piece, rook_start)
+
+    player_boards_push(king_piece, king_end)
+    player_boards_push(rook_piece, rook_end)
+
+    Board.castle_states[@turn] = {}
   end
 
   def to_coordinate_array(board_coord)
@@ -127,23 +178,28 @@ class Game
   end
 
   def move_piece(start_position, end_position, piece)
-    #update board spaces after validating move
-    Board.board_spaces[start_position[0]][start_position[1].to_i - 1] = ' '
-    Board.board_spaces[end_position[0]][end_position[1].to_i - 1] = piece
-    Board.player_boards[@turn][piece] -= [start_position]
-    Board.player_boards[@turn][piece].push(end_position)
+    #update castle states if king or rooks are moved
+    #update player_boards pieces that have been captured
+
+    update_space(start_position, ' ')
+    update_space(end_position, piece)
+
+    player_boards_del(piece, start_position)
+    player_boards_push(piece, end_position)
+
+    
   end
 
   def turn_script
     print_board
     touched_piece, piece_space = get_move_piece
-
-    while fully_blocked?(touched_piece, piece_space)
-      puts "Can't move that piece..."
-      touched_piece, piece_space = get_move_piece
+    if touched_piece == 'castle'
+      castle(piece_space)
+    else
+      end_position = get_end_position(touched_piece, piece_space)
+      move_piece(piece_space, end_position, touched_piece)
     end
-    end_position = get_end_position(touched_piece, piece_space)
-    move_piece(piece_space, end_position, touched_piece)
+    @turn, @opp = @opp, @turn
   end
 
 end

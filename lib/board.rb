@@ -77,8 +77,11 @@ class Board
 
   @piece_movesets = {'♜' => R_MOVES, '♖' => R_MOVES, '♞' => N_MOVES, '♘' => N_MOVES, '♝' => B_MOVES, '♗' => B_MOVES, '♟' => W_P_MOVES, '♙' => B_P_MOVES, '♛' => Q_MOVES, '♕' => Q_MOVES, '♚' => K_MOVES, '♔' => K_MOVES}
 
+  # Castle spaces array: K, R, K space, R space 
+  @castle_states = {'White' => {'ooo' => [[5, 1], [1, 1], [3, 1], [4, 1]], 'oo' => [[5, 1], [8, 1], [7, 1], [6, 1]]}, 'Black' => {'ooo' => [[5, 8], [1, 8], [3, 8], [4, 8]], 'oo' => [[5, 8], [8, 8], [7, 8], [6, 8]]}}
+
   class << self
-    attr_accessor :black_board_state, :white_board_state, :board_spaces, :player_boards, :piece_movesets
+    attr_accessor :black_board_state, :white_board_state, :board_spaces, :player_boards, :piece_movesets, :castle_states
   end
 
   def initialize()
