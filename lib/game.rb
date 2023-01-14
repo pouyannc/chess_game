@@ -3,13 +3,14 @@ require_relative 'board.rb'
 class Game
   include Pieces
 
-  attr_accessor :turn, :opp, :win, :board
+  attr_accessor :turn, :opp, :win, :board, :check
 
   def initialize
     @turn = 'White'
     @opp = 'Black'
     @win = false
     @board = Board.new
+    @check = false
   end
 
   def print_board
@@ -119,22 +120,91 @@ class Game
     Board.player_boards[@turn].keys.any?(Board.board_spaces[to_board_coord(coord_arr)[0]][coord_arr[1] - 1]) 
   end
 
+  def create_temp_board(piece, start_arr, end_arr)
+    temp_board = Board.board_spaces.dup.map { |k, v| [k, v.dup] }.to_h
+
+    start_arr = to_board_coord(start_arr) unless start_arr.is_a?(String)
+    end_arr = to_board_coord(end_arr) unless end_arr.is_a?(String)
+
+    temp_board[start_arr[0]][start_arr[1].to_i - 1] = ' '
+    temp_board[end_arr[0]][end_arr[1].to_i - 1] = piece
+    temp_board
+  end
+
+  def get_king_space_arr(board, player)
+    board.each_key do |c|
+      board[c].each_with_index do |s, n|
+        if s == Board.player_boards[player].keys[0]
+          return to_coordinate_array(c + ((n+1).to_s))
+        end
+      end
+    end
+  end
+
+  def get_piece_from_temp_board(board, space_arr)
+    space = to_board_coord(space_arr)
+    board[space[0]][space[1].to_i - 1]
+  end
+
+  def king_in_check?(piece, start_position, end_position, player)
+    # Create updated temp_board with requested move and look for checks around the player's king
+    temp_board = create_temp_board(piece, start_position, end_position)
+#test
+    p temp_board
+
+    king_space = get_king_space_arr(temp_board, player)
+
+    player == @turn ? opponent = @opp : opponent = @turn
+
+    knight_checks = get_immediate_moves(king_space, N_MOVES)
+
+    # Move through squares in each direction until out of bounds and look for pieces that put king in check
+    K_MOVES.each_with_index do |d, i|
+      current_space = sum_arrays(king_space, d)
+      first_space = true
+      until out_of_bounds(current_space)
+        current_piece = get_piece_from_temp_board(temp_board, current_space)
+
+        break if Board.player_boards[player][current_piece]
+
+        if Board.player_boards[opponent][current_piece]
+          return true if (Board.piece_movesets[current_piece] == K_MOVES && first_space) || 
+                          Board.piece_movesets[current_piece] == Q_MOVES ||
+                          (Board.piece_movesets[current_piece] == R_MOVES && i.between?(0,3)) || 
+                          (Board.piece_movesets[current_piece] == B_MOVES && i.between?(4,7)) || 
+                          (Board.piece_movesets[current_piece] == B_P_MOVES && i.between?(4,5) && first_space) || 
+                          (Board.piece_movesets[current_piece] == W_P_MOVES && i.between?(6,7) && first_space)
+        end
+
+        current_space = sum_arrays(current_space, d)
+        first_space = false
+      end
+    end
+
+    # Look through all possible knight checks for opponent knight
+    knight_checks.each do |s|
+      current_piece = get_piece_from_temp_board(temp_board, s)
+      return true if Board.player_boards[opponent][current_piece] && Board.piece_movesets[current_piece] == N_MOVES
+    end
+
+    false
+  end
+
   def fully_blocked?(piece, position)
+    #given board coordinate
     immediate_moves = get_immediate_moves(to_coordinate_array(position), Board.piece_movesets[piece])
 
     case piece
     when '♙' || '♟'
-      if !occupied_by_any?(immediate_moves[0]) || occupied_by_opp?(immediate_moves[1]) || occupied_by_opp?(immediate_moves[2])
-        return false
+      3.times do |i|
+        if i == 0
+          return false unless occupied_by_any?(immediate_moves[i]) || king_in_check?(piece, position, immediate_moves[i], @turn)
+        else
+          return false if occupied_by_opp?(immediate_moves[i]) && !king_in_check?(piece, position, immediate_moves[i], @turn)
+        end
       end
-
-    when '♚' || '♔'
-      immediate_moves.each { |m| return false unless occupied_by_own?(m) }
-      # king has special conditions... cannot move into capture
-
     else
-      immediate_moves.each { |m| return false unless occupied_by_own?(m) }
-
+      immediate_moves.each { |m| return false unless occupied_by_own?(m) || king_in_check?(piece, position, m, @turn) }
     end
 
     true
@@ -187,7 +257,7 @@ class Game
   def move_piece(start_position, end_position, piece)
     # Update player_boards pieces that have been captured
     captured_piece = get_opp_piece(end_position)
-    Board.player_boards[@opp][captured_piece] = [] unless capture_piece.nil?
+    Board.player_boards[@opp][captured_piece] = [] unless captured_piece.nil?
 
     update_space(start_position, ' ')
     update_space(end_position, piece)
@@ -197,25 +267,47 @@ class Game
 
     # Update castle states if king or rooks are moved
     if piece == '♜' || piece == '♖'
-      if start_position[0] == 'a' && castle_states[@turn]['ooo']
-        castle_states[@turn].delete('ooo')
-      elsif start_position[0] == 'h' && castle_states[@turn]['oo']
-        castle_states[@turn].delete('oo')
+      if start_position[0] == 'a' && Board.castle_states[@turn]['ooo']
+        Board.castle_states[@turn].delete('ooo')
+      elsif start_position[0] == 'h' && Board.castle_states[@turn]['oo']
+        Board.castle_states[@turn].delete('oo')
       end
-    elsif piece == '♚' || piece == '♔' && castle_states[@turn] != {}
-      castle_states[@turn] = {}
+    elsif piece == '♚' || piece == '♔' && Board.castle_states[@turn] != {}
+      Board.castle_states[@turn] = {}
     end
   end
 
+  def checkmate?()
+  end
+
+  def end_screen()
+  end
+
   def turn_script
+    #go look for where to put check for kings!!! (get piece and get end position function??)
     print_board
-    touched_piece, piece_space = get_move_piece
-    if touched_piece == 'castle'
-      castle(piece_space)
-    else
-      end_position = get_end_position(touched_piece, piece_space)
-      move_piece(piece_space, end_position, touched_piece)
+
+    if @check
+      #create method
+      @win = true if checkmate?()
     end
+
+    if @win
+      #create method
+      return end_screen()
+    else
+      touched_piece, piece_space = get_move_piece
+
+      if touched_piece == 'castle'
+        # Need to disallow castle if king is in check while moving to castle space
+        castle(piece_space)
+      else
+        end_position = get_end_position(touched_piece, piece_space)
+        @check = true if king_in_check?(touched_piece, piece_space, end_position, @opp) # Checking if opponent king in check
+        move_piece(piece_space, end_position, touched_piece)
+      end
+    end
+
     @turn, @opp = @opp, @turn
   end
 
