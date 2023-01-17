@@ -3,19 +3,18 @@ require_relative 'board.rb'
 class Game
   include Pieces
 
-  attr_accessor :turn, :opp, :win, :board, :check
+  attr_accessor :turn, :opp, :checkmate, :board, :check, :valid_spaces_during_check
 
   def initialize
     @turn = 'White'
     @opp = 'Black'
-    @win = false
+    @checkmate = false
     @board = Board.new
     @check = false
   end
 
   def print_board
     puts @board.create_board
-    puts "\n#{@turn}'s turn"
   end
 
   def check_within_bounds(coordinate)
@@ -51,12 +50,20 @@ class Game
   def get_move_piece
     puts "Enter the coordinate of a piece to move:\n"
     piece_space = gets.chomp.downcase
-    until valid_piece?(piece_space)
-      puts "You must enter a valid coordinate (letter + number):\n"
-      piece_space = gets.chomp.downcase
-    end
 
-    return ['castle', piece_space] if piece_space == 'ooo' || piece_space == 'oo'
+    if @check
+      until @valid_spaces_during_check.any?(piece_space)
+        puts "You must enter a valid coordinate (letter + number):\n"
+        piece_space = gets.chomp.downcase
+      end
+    else
+      until valid_piece?(piece_space)
+        puts "You must enter a valid coordinate (letter + number):\n"
+        piece_space = gets.chomp.downcase
+      end
+
+      return ['castle', piece_space] if piece_space == 'ooo' || piece_space == 'oo'
+    end
 
     piece = get_own_piece(piece_space)
     [piece, piece_space]
@@ -149,8 +156,6 @@ class Game
   def king_in_check?(piece, start_position, end_position, player)
     # Create updated temp_board with requested move and look for checks around the player's king
     temp_board = create_temp_board(piece, start_position, end_position)
-#test
-    p temp_board
 
     king_space = get_king_space_arr(temp_board, player)
 
@@ -238,7 +243,7 @@ class Game
 
     moves = piece_move(s_coord, e_coord, piece)
 
-    return false if moves.nil? || blocked?(piece, moves)
+    return false if moves.nil? || blocked?(piece, moves) || (@check && king_in_check?(piece, s, e, @turn))
 
     return true
   end
@@ -277,25 +282,67 @@ class Game
     end
   end
 
-  def checkmate?()
+  def any_valid_moves?(piece, position, pawn = false)
+    # Given piece and its position, return true if there exists an open move where the king is not in check
+    position_arr = to_coordinate_array(position)
+
+    if pawn
+      if (@turn == 'White' && position_arr[1] == 2) || (@turn == 'Black' && position_arr[1] == 7)
+        2.times do
+          next_position = sum_arrays(position_arr, Board.piece_movesets[piece][0])
+          break if occupied_by_any?(next_position)
+          return true if !king_in_check?(piece, position_arr, next_position, @turn)
+          next_position = sum_arrays(next_position, Board.piece_movesets[piece][0])
+        end
+      end
+      return !fully_blocked?(piece, position)
+    end
+        
+    Board.piece_movesets[piece].each do |d|
+      next_position = sum_arrays(position_arr, d)
+      until out_of_bounds(next_position) || occupied_by_own?(next_position)
+        return true if !king_in_check?(piece, position_arr, next_position, @turn)
+        break if occupied_by_opp?(next_position)
+        next_position = sum_arrays(next_position, d)
+      end
+    end
+
+    false
   end
 
-  def end_screen()
+  def valid_pieces_when_check
+    # Return the spaces of pieces that can make a valid move while king is in check
+    valid_spaces = []
+    Board.player_boards[@turn].each_with_index do |(k, v), i|
+      case i
+      when 0 || 4
+        v.each { |s| valid_spaces.push(s) unless fully_blocked?(k, s) }
+      when 1 || 2 || 3
+        v.each { |s| valid_spaces.push(s) if any_valid_moves?(k, s) }
+      else
+        v.each { |s| valid_spaces.push(s) if any_valid_moves?(k, s, true) }
+      end
+    end
+
+    valid_spaces
+  end
+
+  def end_screen
+    puts "#{@opp} is the winner!"
   end
 
   def turn_script
-    #go look for where to put check for kings!!! (get piece and get end position function??)
     print_board
 
     if @check
-      #create method
-      @win = true if checkmate?()
+      @valid_spaces_during_check = valid_pieces_when_check
+      @checkmate = true if @valid_spaces_during_check.empty?
     end
 
-    if @win
-      #create method
-      return end_screen()
+    if @checkmate
+      return end_screen
     else
+      puts "\n#{@turn}'s turn"
       touched_piece, piece_space = get_move_piece
 
       if touched_piece == 'castle'
@@ -304,6 +351,8 @@ class Game
       else
         end_position = get_end_position(touched_piece, piece_space)
         @check = true if king_in_check?(touched_piece, piece_space, end_position, @opp) # Checking if opponent king in check
+
+        
         move_piece(piece_space, end_position, touched_piece)
       end
     end
@@ -311,4 +360,13 @@ class Game
     @turn, @opp = @opp, @turn
   end
 
+  def play
+    until @checkmate do
+      turn_script
+    end
+  end
 end
+
+#some similar functions like fully_blocked? any_valid_moves? and king_in_check? - could be refactored
+#a2a3 e7e6 b2b3 d8h4 c2c3 f8c5 g2g4 h4f2
+#what is left: pawn promotion, disallowing castle if it puts king in check or if in check already, allow game to be saved, intro menu screen
