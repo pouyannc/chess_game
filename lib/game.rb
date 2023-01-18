@@ -259,6 +259,18 @@ class Game
     end_position
   end
 
+  def get_pawn_promo_piece
+    letter_to_piece = {'Q' => Board.player_boards[@turn].keys[1], 'R' => Board.player_boards[@turn].keys[2], 'B' => Board.player_boards[@turn].keys[3], 'N' => Board.player_boards[@turn].keys[4]}
+    puts "Enter piece to replace pawn [Q/R/N/B]: "
+    promo_piece = gets.chomp.upcase
+    until letter_to_piece.keys.any?(promo_piece)
+      puts "You must enter a valid piece [Q/R/N/B]: "
+      promo_piece = gets.chomp.upcase
+    end
+
+    letter_to_piece[promo_piece]
+  end
+
   def move_piece(start_position, end_position, piece)
     # Update player_boards pieces that have been captured
     captured_piece = get_opp_piece(end_position)
@@ -352,7 +364,8 @@ class Game
         end_position = get_end_position(touched_piece, piece_space)
         @check = true if king_in_check?(touched_piece, piece_space, end_position, @opp) # Checking if opponent king in check
 
-        
+        touched_piece = get_pawn_promo_piece if (touched_piece == '♙' && end_position[1] == '1') || (touched_piece == '♟' && end_position[1] == '8')
+
         move_piece(piece_space, end_position, touched_piece)
       end
     end
@@ -369,4 +382,4 @@ end
 
 #some similar functions like fully_blocked? any_valid_moves? and king_in_check? - could be refactored
 #a2a3 e7e6 b2b3 d8h4 c2c3 f8c5 g2g4 h4f2
-#what is left: pawn promotion, disallowing castle if it puts king in check or if in check already, allow game to be saved, intro menu screen
+#what is left: pawn promotion, disallowing castle if it puts king in check, allow game to be saved, intro menu screen
