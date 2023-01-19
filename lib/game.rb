@@ -1,4 +1,5 @@
 require_relative 'board.rb'
+require 'json'
 
 class Game
   include Pieces
@@ -33,6 +34,52 @@ class Game
     nil
   end
 
+  def to_json
+    File.write('../save/last_save.json', JSON.dump({
+      :turn => @turn,
+      :opp => @opp,
+      :check => @check,
+      :black_board_state => Board.black_board_state,
+      :white_board_state => Board.white_board_state,
+      :board_spaces => Board.board_spaces,
+      :castle_states => Board.castle_states,
+    }))
+  end
+
+  def from_json
+    data = JSON.load(File.read('../save/last_save.json'))
+    @turn = data['turn']
+    @opp = data['opp']
+    @check = data['check']
+    Board.black_board_state = data['black_board_state']
+    Board.white_board_state = data['white_board_state']
+    Board.board_spaces = data['board_spaces']
+    Board.castle_states = data['castle_states']
+  end
+
+  def save_game
+    to_json
+    return 'save'
+  end
+
+  def load_game
+    puts "Enter 'r' to resume from last save or 'n' for new game"
+    loop do
+      response = gets.chomp.downcase
+      if response == 'r'
+        self.from_json
+        sleep 1
+        puts "...Game loaded"
+        sleep 1
+        break
+      elsif response == 'n'
+        break
+      else
+        puts "Invalid input. Enter either 'r' (resume) or 'n' (new game)"
+      end
+    end
+  end
+
   def valid_castle?(type)
     if Board.castle_states[@turn][type] && !occupied_by_any?(Board.castle_states[@turn][type][2]) && !occupied_by_any?(Board.castle_states[@turn][type][3])
       return false if type == 'ooo' && occupied_by_any?(Board.castle_states[@turn][type][4])
@@ -58,18 +105,20 @@ class Game
     piece_space = gets.chomp.downcase
 
     if @check
-      until @valid_spaces_during_check.any?(piece_space)
+      until @valid_spaces_during_check.any?(piece_space) || piece_space == 'save'
         puts "You must enter a valid coordinate (letter + number):\n"
         piece_space = gets.chomp.downcase
       end
     else
-      until valid_piece?(piece_space)
+      until valid_piece?(piece_space) || piece_space == 'save'
         puts "You must enter a valid coordinate (letter + number):\n"
         piece_space = gets.chomp.downcase
       end
 
       return ['castle', piece_space] if piece_space == 'ooo' || piece_space == 'oo'
     end
+
+    return [nil, piece_space] if piece_space == 'save'
 
     piece = get_own_piece(piece_space)
     [piece, piece_space]
@@ -349,6 +398,11 @@ class Game
     puts "#{@opp} is the winner!"
   end
 
+  def intro
+    puts "\nTwo Player Chess!\nType 'save' at any point to save and quit\nPress enter to start"
+    gets
+  end
+
   def turn_script
     print_board
 
@@ -363,8 +417,9 @@ class Game
       puts "\n#{@turn}'s turn"
       touched_piece, piece_space = get_move_piece
 
-      if touched_piece == 'castle'
-        # Need to disallow castle if king is in check while moving to castle space
+      if piece_space == 'save'
+        return save_game
+      elsif touched_piece == 'castle'
         castle(piece_space)
       else
         end_position = get_end_position(touched_piece, piece_space)
@@ -382,12 +437,13 @@ class Game
   end
 
   def play
+    intro
+    load_game unless File.zero?('../save/last_save.json')
+
     until @checkmate do
-      turn_script
+      break if turn_script == 'save'
     end
+
+    File.write('../save/last_save.json', '') if @checkmate
   end
 end
-
-#some similar functions like fully_blocked? any_valid_moves? and king_in_check? - could be refactored
-#a2a3 e7e6 b2b3 d8h4 c2c3 f8c5 g2g4 h4f2
-#what is left: disallowing castle if it puts king in check, allow game to be saved, intro menu screen

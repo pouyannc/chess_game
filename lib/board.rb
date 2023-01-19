@@ -57,10 +57,6 @@ class Board
   @black_board_state = {'♔' => ['e8'], '♕' => ['d8'], '♖' => ['a8', 'h8'], '♗' => ['c8', 'f8'], '♘' => ['b8', 'g8'], '♙' => ['a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7']}
 
   @white_board_state = {'♚' => ['e1'], '♛' => ['d1'], '♜' => ['a1', 'h1'], '♝' => ['c1', 'f1'], '♞' => ['b1', 'g1'], '♟' => ['a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2']}
-
-  # @black_board_state = {'K' => ['e8'], 'Q' => ['d8'], 'R' => ['a8', 'h8'], 'B' => ['c8', 'f8'], 'N' => ['b8', 'g8'], 'P' => ['a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7']}
-
-  # @white_board_state = {'K' => ['e1'], 'Q' => ['d1'], 'R' => ['a1', 'h1'], 'B' => ['c1', 'f1'], 'N' => ['b1', 'g1'], 'P' => ['a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2']}
   
   @board_spaces = {
     'a' => ['♜', '♟', ' ', ' ', ' ', ' ', '♙', '♖'],
@@ -73,19 +69,18 @@ class Board
     'h' => ['♜', '♟', ' ', ' ', ' ', ' ', '♙', '♖']
   }
 
+  # Castle spaces array: K, R, K space, R space 
+  @castle_states = {'White' => {'ooo' => [[5, 1], [1, 1], [3, 1], [4, 1], [2, 1]], 'oo' => [[5, 1], [8, 1], [7, 1], [6, 1]]}, 'Black' => {'ooo' => [[5, 8], [1, 8], [3, 8], [4, 8], [2, 8]], 'oo' => [[5, 8], [8, 8], [7, 8], [6, 8]]}}
+
   @player_boards = {'White' => @white_board_state, 'Black' => @black_board_state}
 
   @piece_movesets = {'♜' => R_MOVES, '♖' => R_MOVES, '♞' => N_MOVES, '♘' => N_MOVES, '♝' => B_MOVES, '♗' => B_MOVES, '♟' => W_P_MOVES, '♙' => B_P_MOVES, '♛' => Q_MOVES, '♕' => Q_MOVES, '♚' => K_MOVES, '♔' => K_MOVES}
-
-  # Castle spaces array: K, R, K space, R space 
-  @castle_states = {'White' => {'ooo' => [[5, 1], [1, 1], [3, 1], [4, 1], [2, 1]], 'oo' => [[5, 1], [8, 1], [7, 1], [6, 1]]}, 'Black' => {'ooo' => [[5, 8], [1, 8], [3, 8], [4, 8], [2, 8]], 'oo' => [[5, 8], [8, 8], [7, 8], [6, 8]]}}
 
   class << self
     attr_accessor :black_board_state, :white_board_state, :board_spaces, :player_boards, :piece_movesets, :castle_states
   end
 
-  def initialize()
-
+  def initialize
   end
 
   def create_board
