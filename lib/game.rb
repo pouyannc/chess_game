@@ -34,7 +34,13 @@ class Game
   end
 
   def valid_castle?(type)
-    Board.castle_states[@turn][type] && !occupied_by_any?(Board.castle_states[@turn][type][2]) && !occupied_by_any?(Board.castle_states[@turn][type][3])
+    if Board.castle_states[@turn][type] && !occupied_by_any?(Board.castle_states[@turn][type][2]) && !occupied_by_any?(Board.castle_states[@turn][type][3])
+      return false if type == 'ooo' && occupied_by_any?(Board.castle_states[@turn][type][4])
+      (2..3).each { |i| return false if king_in_check?(Board.player_boards[@turn][0], Board.castle_states[@turn][type][0], Board.castle_states[@turn][type][i], @turn) }
+      return true
+    else
+      return false
+    end
   end
 
   def valid_piece?(user_input)
@@ -362,9 +368,11 @@ class Game
         castle(piece_space)
       else
         end_position = get_end_position(touched_piece, piece_space)
-        @check = true if king_in_check?(touched_piece, piece_space, end_position, @opp) # Checking if opponent king in check
 
         touched_piece = get_pawn_promo_piece if (touched_piece == '♙' && end_position[1] == '1') || (touched_piece == '♟' && end_position[1] == '8')
+
+        @check = false if @check
+        @check = true if king_in_check?(touched_piece, piece_space, end_position, @opp) # Checking if opponent king in check
 
         move_piece(piece_space, end_position, touched_piece)
       end
@@ -382,4 +390,4 @@ end
 
 #some similar functions like fully_blocked? any_valid_moves? and king_in_check? - could be refactored
 #a2a3 e7e6 b2b3 d8h4 c2c3 f8c5 g2g4 h4f2
-#what is left: pawn promotion, disallowing castle if it puts king in check, allow game to be saved, intro menu screen
+#what is left: disallowing castle if it puts king in check, allow game to be saved, intro menu screen
