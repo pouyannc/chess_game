@@ -19,7 +19,7 @@ class Game
   end
 
   def check_within_bounds(coordinate)
-    coordinate[0].between?('a', 'h') && coordinate[1].between?('1', '8')
+    coordinate.length == 2 && coordinate[0].between?('a', 'h') && coordinate[1].between?('1', '8')
   end
 
   def get_own_piece(position)
@@ -35,7 +35,7 @@ class Game
   end
 
   def to_json
-    File.write('../save/last_save.json', JSON.dump({
+    File.write(File.dirname(__FILE__) + '/../save/last_save.json', JSON.dump({
       :turn => @turn,
       :opp => @opp,
       :check => @check,
@@ -43,11 +43,12 @@ class Game
       :white_board_state => Board.white_board_state,
       :board_spaces => Board.board_spaces,
       :castle_states => Board.castle_states,
+      :player_boards => Board.player_boards,
     }))
   end
 
   def from_json
-    data = JSON.load(File.read('../save/last_save.json'))
+    data = JSON.load(File.read(File.dirname(__FILE__) + '/../save/last_save.json'))
     @turn = data['turn']
     @opp = data['opp']
     @check = data['check']
@@ -55,6 +56,7 @@ class Game
     Board.white_board_state = data['white_board_state']
     Board.board_spaces = data['board_spaces']
     Board.castle_states = data['castle_states']
+    Board.player_boards = data['player_boards']
   end
 
   def save_game
@@ -83,7 +85,7 @@ class Game
   def valid_castle?(type)
     if Board.castle_states[@turn][type] && !occupied_by_any?(Board.castle_states[@turn][type][2]) && !occupied_by_any?(Board.castle_states[@turn][type][3])
       return false if type == 'ooo' && occupied_by_any?(Board.castle_states[@turn][type][4])
-      (2..3).each { |i| return false if king_in_check?(Board.player_boards[@turn][0], Board.castle_states[@turn][type][0], Board.castle_states[@turn][type][i], @turn) }
+      (2..3).each { |i| return false if king_in_check?(Board.player_boards[@turn].keys[0], Board.castle_states[@turn][type][0], Board.castle_states[@turn][type][i], @turn) }
       return true
     else
       return false
@@ -234,6 +236,7 @@ class Game
                           (Board.piece_movesets[current_piece] == B_MOVES && i.between?(4,7)) || 
                           (Board.piece_movesets[current_piece] == B_P_MOVES && i.between?(4,5) && first_space) || 
                           (Board.piece_movesets[current_piece] == W_P_MOVES && i.between?(6,7) && first_space)
+          break
         end
 
         current_space = sum_arrays(current_space, d)
@@ -256,7 +259,7 @@ class Game
 
     case piece
     when '♙' || '♟'
-      3.times do |i|
+      immediate_moves.each_with_index do |m, i|
         if i == 0
           return false unless occupied_by_any?(immediate_moves[i]) || king_in_check?(piece, position, immediate_moves[i], @turn)
         else
@@ -329,7 +332,7 @@ class Game
   def move_piece(start_position, end_position, piece)
     # Update player_boards pieces that have been captured
     captured_piece = get_opp_piece(end_position)
-    Board.player_boards[@opp][captured_piece] = [] unless captured_piece.nil?
+    Board.player_boards[@opp][captured_piece] -= [end_position] unless captured_piece.nil?
 
     update_space(start_position, ' ')
     update_space(end_position, piece)
@@ -438,12 +441,11 @@ class Game
 
   def play
     intro
-    load_game unless File.zero?('../save/last_save.json')
+    load_game unless File.zero?(File.dirname(__FILE__) + '/../save/last_save.json')
 
     until @checkmate do
       break if turn_script == 'save'
     end
 
-    File.write('../save/last_save.json', '') if @checkmate
   end
 end
